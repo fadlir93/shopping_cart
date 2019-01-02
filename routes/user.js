@@ -4,6 +4,7 @@ var csrf = require('csurf');
 var passport = require('passport');
 
 var csrfProtection = csrf();
+
 router.use(csrfProtection);
 
 router.get('/profile', isLoggedIn, function(req, res, next) {
