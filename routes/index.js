@@ -7,12 +7,13 @@ var Cart = require('../models/cart');
 /* GET home page. */
 router.get('/', function(req, res, next) {
   Product.find(function(err, docs){
+    var successMsg = req.flash('success')[0];
     var productChunks = [];
     var chunkSize = 3;
     for (var i = 0; i < docs.length; i += chunkSize){
       productChunks.push(docs.slice(i, i + chunkSize));
     }
-    res.render('shop/index', { title: 'Shoping Cart', products: docs });
+    res.render('shop/index', { title: 'Shoping Cart', products: docs, successMsg: successMsg, noMessage: !successMsg});
   })
 });
 
@@ -43,7 +44,36 @@ router.get('/checkout', function(req, res, next){
     return res.redirect('/shopping-cart');
   };
   var cart = new Cart(req.session.cart);
-  res.render('shop/checkout', {total: cart.totalPrice});
+  var errMsg = req.flash('error')[0];
+  res.render('shop/checkout', {total: cart.totalPrice, errMsg: errMsg, noError: !errMsg});
 });
+
+router.post('/checkout', function(req, res, next) {
+  if(!req.session.cart) {
+    return res.redirect('/shopping-cart');
+  }
+  var cart = new Cart(req.session.cart);
+
+  var stripe = require('stripe')(
+    "sk_test_DOW28UqifvgLZUPCim1R86KE"
+  );
+  
+  
+  stripe.charges.create({
+    amount: cart.totalPrice * 100,
+    currency: "idr",
+    source: req.body.stripeToken, // obtained with Stripe.js
+    description: "Test Charge For fadlir93@gmail.com"
+  }, function(err, charge) {
+  // asynchronously called
+    if(err) {
+      req.flash('error', err.message);
+      return res.redirect('/checkout');
+    }
+    req.flash('success', 'successfully bought product!')
+    req.session.cart = null;
+    res.redirect('/');
+  });
+})
 
 module.exports = router;
